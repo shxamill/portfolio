@@ -1,0 +1,139 @@
+---
+import { Image, getImage } from 'astro:assets';
+import Base from '../../layouts/Base.astro';
+import FakeNewsDemo from '../../components/FakeNewsDemo.astro';
+import { work } from '../../data/work';
+
+export function getStaticPaths() {
+  return work.map((study, i) => ({ params: { slug: study.slug }, props: { study, next: work[(i + 1) % work.length] } }));
+}
+const { study, next } = Astro.props;
+const poster = study.heroVideo ? await getImage({ src: study.heroVideo.poster, width: 1600, format: 'webp' }) : null;
+---
+<Base title={`${study.title} – Muhammed Shamil`} description={study.line}>
+  <article class="wrap study" data-colour={study.colour}>
+    <p class="back"><a href="/#work">All work</a></p>
+    <header class="head">
+      <h1>{study.title}</h1>
+      <p class="line measure">{study.line}</p>
+    </header>
+
+    <dl class="meta">
+      <div><dt>Role</dt><dd>{study.role}</dd></div>
+      <div><dt>When</dt><dd>{study.when}</dd></div>
+      <div><dt>Built with</dt><dd>{study.stack.join(', ')}</dd></div>
+      <div><dt>Links</dt><dd class="links">{study.links.map((l) => <a href={l.href} rel="noopener">{l.label}</a>)}</dd></div>
+    </dl>
+
+    <ul class="evidence" aria-label="Key numbers">
+      {study.evidence.map((e) => <li><span class="mono value">{e.value}</span><span class="label">{e.label}</span></li>)}
+    </ul>
+
+    {study.hero && (
+      <figure class="hero">
+        <Image src={study.hero.src} alt={study.hero.alt} widths={[640, 1100, 1600]} sizes="(max-width: 88rem) 100vw, 88rem" loading="eager" />
+      </figure>
+    )}
+
+    <div class="body">
+      {study.sections.map((s, i) => (
+        <>
+          <section class="part">
+            <h2>{s.heading}</h2>
+            <div class="measure">
+              {s.paragraphs.map((p) => <p>{p}</p>)}
+              {s.points && <ul>{s.points.map((p) => <li>{p}</li>)}</ul>}
+            </div>
+          </section>
+          {study.demo === 'fake-news' && i === 0 && <FakeNewsDemo />}
+        </>
+      ))}
+    </div>
+
+    {study.heroVideo && poster && (
+      <figure class="hero">
+        <video class="reel" src={study.heroVideo.src} poster={poster.src} muted loop playsinline autoplay preload="metadata" aria-label={study.heroVideo.alt} data-reel></video>
+        <figcaption class="reel-cap"><button type="button" data-reel-toggle>Pause the showreel</button></figcaption>
+      </figure>
+    )}
+
+    {study.gallery && (
+      <section class="gallery-wrap" aria-labelledby="gallery-title">
+        <h2 id="gallery-title">From the studio</h2>
+        <div class="gallery">
+          {study.gallery.map((g) => (
+            <figure>
+              <Image src={g.src} alt={g.alt} widths={[360, 600, 900]} sizes="(max-width: 40rem) 50vw, 25vw" />
+              {g.caption && <figcaption>{g.caption}</figcaption>}
+            </figure>
+          ))}
+        </div>
+      </section>
+    )}
+
+    <nav class="next" aria-label="Next case study">
+      <span class="next-label">Next case study</span>
+      <a href={`/work/${next.slug}`}>{next.title}</a>
+    </nav>
+  </article>
+</Base>
+
+<style>
+  .study[data-colour='code'] { --c: var(--code); }
+  .study[data-colour='studio'] { --c: var(--studio); }
+  .back { margin: 1rem 0 0; }
+  .head { padding-block: clamp(1.5rem, 5vw, 4rem) 1.5rem; border-bottom: 4px solid var(--c); }
+  h1 {
+    font-size: clamp(2.5rem, 7.5vw, 6.5rem); line-height: 0.92; font-weight: 800;
+    font-variation-settings: 'wdth' 125; letter-spacing: -0.03em; max-width: 16ch;
+  }
+  .line { font-size: var(--s1); line-height: 1.4; color: var(--ink-2); margin: 1.25rem 0 0; }
+  .meta { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 1.25rem 2rem; margin: 1.75rem 0; }
+  .meta dt { color: var(--ink-3); font-size: var(--s-1); margin-bottom: 0.2rem; }
+  .meta dd { margin: 0; }
+  .links { display: flex; flex-direction: column; gap: 0.2rem; }
+  .evidence {
+    list-style: none; padding: 0; margin: 0 0 clamp(2rem, 5vw, 3.5rem); display: flex; flex-wrap: wrap; gap: 1rem;
+  }
+  .evidence li { background: var(--panel); border: 1px solid var(--rule); border-radius: 8px; padding: 0.9rem 1.1rem; min-width: 10rem; display: flex; flex-direction: column; }
+  .evidence .value { font-size: var(--s2); font-weight: 500; line-height: 1.1; }
+  .evidence .label { color: var(--ink-2); font-size: var(--s-1); margin-top: 0.3rem; }
+  .hero { margin: 0 0 clamp(2.5rem, 6vw, 4rem); border-radius: 10px; overflow: hidden; border: 1px solid var(--rule); }
+  .hero img { width: 100%; height: auto; }
+  .reel { width: 100%; aspect-ratio: 16 / 9; object-fit: cover; background: var(--screen); }
+  .reel-cap { padding: 0.6rem 0.9rem; background: var(--panel); }
+  .reel-cap button { font: inherit; font-size: var(--s-1); background: none; border: 0; padding: 0; text-decoration: underline; cursor: pointer; color: var(--ink); }
+  .body { display: grid; gap: clamp(2.5rem, 5vw, 3.5rem); }
+  .part { display: grid; grid-template-columns: minmax(0, 17rem) minmax(0, 1fr); gap: 1rem 3rem; }
+  .part h2 { font-size: var(--s1); font-weight: 720; font-variation-settings: 'wdth' 112; line-height: 1.25; }
+  .part p, .part li { font-size: 1.125rem; line-height: 1.62; }
+  .part ul { padding-left: 1.2rem; }
+  .gallery-wrap { margin-top: clamp(3rem, 7vw, 5rem); }
+  .gallery-wrap h2 { font-size: var(--s2); font-variation-settings: 'wdth' 118; font-weight: 740; margin-bottom: 1.25rem; }
+  .gallery { columns: 4 14rem; column-gap: 1rem; }
+  .gallery figure { margin: 0 0 1rem; break-inside: avoid; }
+  .gallery img { width: 100%; height: auto; border-radius: 6px; }
+  figcaption { font-size: var(--s-1); color: var(--ink-2); margin-top: 0.4rem; }
+  .next { margin-top: clamp(4rem, 8vw, 6rem); padding-top: 1.5rem; border-top: 1px solid var(--rule); display: flex; flex-direction: column; gap: 0.3rem; }
+  .next-label { color: var(--ink-3); font-size: var(--s-1); }
+  .next a { font-size: clamp(1.75rem, 4.5vw, 3.25rem); font-weight: 780; font-variation-settings: 'wdth' 125; letter-spacing: -0.02em; line-height: 1.05; text-decoration: none; }
+  .next a:hover { text-decoration: underline; }
+  @media (max-width: 60rem) {
+    .meta { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .part { grid-template-columns: 1fr; }
+  }
+  @media (max-width: 30rem) { .meta { grid-template-columns: 1fr; } }
+</style>
+
+<script>
+  function initReel() {
+    const v = document.querySelector<HTMLVideoElement>('[data-reel]');
+    const b = document.querySelector<HTMLButtonElement>('[data-reel-toggle]');
+    if (!v || !b) return;
+    const label = () => { b.textContent = v.paused ? 'Play the showreel' : 'Pause the showreel'; };
+    if (matchMedia('(prefers-reduced-motion: reduce)').matches) v.pause();
+    v.addEventListener('play', label); v.addEventListener('pause', label); label();
+    b.addEventListener('click', () => (v.paused ? v.play() : v.pause()));
+  }
+  document.addEventListener('astro:page-load', initReel);
+</script>

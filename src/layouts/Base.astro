@@ -1,0 +1,71 @@
+---
+import '../styles/global.css';
+import { ClientRouter } from 'astro:transitions';
+
+interface Props { title?: string; description?: string; image?: string }
+const {
+  title = 'Muhammed Shamil – software developer and studio co-founder',
+  description = 'Portfolio of Muhammed Shamil, a Bengaluru software developer working across full-stack web, machine learning and AI tooling, and co-founder of Velune Creative Studio.',
+  image = '/og.png',
+} = Astro.props;
+const canonical = new URL(Astro.url.pathname, Astro.site);
+const ogImage = new URL(image, Astro.site);
+const path = Astro.url.pathname;
+---
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{title}</title>
+    <meta name="description" content={description} />
+    <link rel="canonical" href={canonical} />
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <meta name="theme-color" content="#e6e8eb" />
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content={title} />
+    <meta property="og:description" content={description} />
+    <meta property="og:url" content={canonical} />
+    <meta property="og:image" content={ogImage} />
+    <meta name="twitter:card" content="summary_large_image" />
+    <script type="application/ld+json" set:html={JSON.stringify({
+      '@context': 'https://schema.org', '@type': 'Person', name: 'Muhammed Shamil P',
+      jobTitle: 'Software developer', address: { '@type': 'PostalAddress', addressLocality: 'Bengaluru', addressCountry: 'IN' },
+      url: Astro.site?.toString(), sameAs: ['https://github.com/shxamill', 'https://www.linkedin.com/in/shxamill', 'https://www.veluneproductions.com'],
+    })} />
+    <ClientRouter />
+  </head>
+  <body>
+    <a class="skip" href="#main">Skip to content</a>
+    <header class="site-head wrap">
+      <a class="home" href="/" aria-current={path === '/' ? 'page' : undefined}>Muhammed Shamil</a>
+      <nav aria-label="Main">
+        <a href="/#work">Work</a>
+        <a href="/#about">About</a>
+        <a href="/#contact">Contact</a>
+        <a href="/Muhammed_Shamil_P_Resume.pdf">Résumé</a>
+      </nav>
+    </header>
+    <main id="main">
+      <slot />
+    </main>
+    <footer class="site-foot wrap">
+      <p>Built by hand with Astro. Set in Archivo and IBM Plex Mono. <a href="https://github.com/shxamill/portfolio">Source on GitHub</a>.</p>
+    </footer>
+  </body>
+</html>
+
+<style>
+  .site-head {
+    display: flex; align-items: baseline; justify-content: space-between; gap: 1rem;
+    padding-block: 1.25rem;
+  }
+  .home { font-weight: 700; text-decoration: none; font-variation-settings: 'wdth' 112; }
+  nav { display: flex; gap: clamp(0.9rem, 2.5vw, 1.75rem); }
+  nav a { text-decoration: none; color: var(--ink-2); }
+  nav a:hover { color: var(--ink); text-decoration: underline; }
+  .site-foot { padding-block: 3rem 2.5rem; color: var(--ink-3); font-size: var(--s-1); }
+  @media (max-width: 30rem) {
+    .site-head { flex-direction: column; gap: 0.35rem; }
+  }
+</style>

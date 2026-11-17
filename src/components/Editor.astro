@@ -1,0 +1,450 @@
+---
+/*
+  The homepage hero: a small non-linear editor whose timeline is my career.
+  Server side: compute month positions, pack overlapping clips into lanes and
+  optimise every image. Client side: one playhead state drives the viewer.
+*/
+import { getImage } from 'astro:assets';
+import { clips, markers, tracks, range, type Clip } from '../data/timeline';
+
+const [fy, fm] = range.from.split('-').map(Number);
+const idx = (ym: string) => { const [y, m] = ym.split('-').map(Number); return (y - fy) * 12 + (m - fm); };
+const total = idx(range.to) + 1;
+
+// Pack clips into lanes per track (an editor never lets clips overlap on one lane).
+const laneOf: Record<string, number> = {};
+const lanesPerTrack: Record<string, number> = {};
+for (const t of tracks) {
+  const ends: number[] = [];
+  const list = clips.filter((c) => c.track === t.id).sort((a, b) => idx(a.start) - idx(b.start));
+  for (const c of list) {
+    let lane = ends.findIndex((e) => e < idx(c.start));
+    if (lane === -1) { lane = ends.length; ends.push(0); }
+    ends[lane] = idx(c.end);
+    laneOf[c.id] = lane;
+  }
+  lanesPerTrack[t.id] = Math.max(1, ends.length);
+}
+
+async function mediaFor(c: Clip) {
+  const m = c.media;
+  if (m.kind === 'image') {
+    const img = await getImage({ src: m.src, width: 1280, format: 'webp', quality: 78 });
+    return { kind: 'image', src: img.src, alt: m.alt, fit: m.fit ?? 'cover', position: m.position ?? 'center' };
+  }
+  if (m.kind === 'video') {
+    const poster = await getImage({ src: m.poster, width: 1280, format: 'webp', quality: 70 });
+    return { kind: 'video', src: m.src, poster: poster.src, alt: m.alt };
+  }
+  return m;
+}
+
+const trackColour = Object.fromEntries(tracks.map((t) => [t.id, t.colour]));
+const trackLabel = Object.fromEntries(tracks.map((t) => [t.id, t.label]));
+const payload = {
+  total,
+  from: range.from,
+  items: [
+    ...(await Promise.all(clips.map(async (c, order) => ({
+      id: c.id, kind: 'clip', track: c.track, trackLabel: trackLabel[c.track], colour: trackColour[c.track],
+      s: idx(c.start), e: idx(c.end), approx: !!c.approx, ongoing: !!c.ongoing, title: c.title, summary: c.summary,
+      links: c.links ?? [], caseStudy: c.caseStudy ?? null, order, media: await mediaFor(c),
+    })))),
+    ...markers.map((m, i) => ({
+      id: m.id, kind: 'marker', track: 'mark', trackLabel: 'Milestone', colour: 'mark',
+      s: idx(m.at), e: idx(m.at), approx: !!m.approx, title: m.title, summary: m.summary,
+      links: [], caseStudy: null, order: 100 + i, media: { kind: 'card', big: m.title, small: m.summary },
+    })),
+  ],
+};
+
+const years: { y: number; at: number }[] = [];
+for (let y = fy; y <= Number(range.to.slice(0, 4)); y++) {
+  const at = idx(`${y}-01`);
+  years.push({ y, at: Math.max(0, at) });
+}
+const pct = (n: number) => `${(n / total) * 100}%`;
+const LANE = 30;
+---
+<section class="editor" aria-labelledby="editor-title" data-editor>
+  <h2 id="editor-title" class="visually-hidden">Career timeline</h2>
+  <div class="monitor-row">
+    <div class="viewer" data-viewer aria-hidden="true"></div>
+    <div class="inspector" data-inspector aria-live="polite"></div>
+  </div>
+
+  <div class="transport">
+    <div class="buttons">
+      <button type="button" data-prev aria-label="Previous clip">
+        <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M5 4v12M16 4 7 10l9 6z" /></svg>
+      </button>
+      <button type="button" class="play" data-play aria-label="Play the timeline">
+        <svg class="i-play" viewBox="0 0 20 20" aria-hidden="true"><path d="M6 4l10 6-10 6z" /></svg>
+        <svg class="i-pause" viewBox="0 0 20 20" aria-hidden="true"><path d="M6 4v12M14 4v12" /></svg>
+      </button>
+      <button type="button" data-next aria-label="Next clip">
+        <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M15 4v12M4 4l9 6-9 6z" /></svg>
+      </button>
+    </div>
+    <p class="timecode"><span class="mono" data-tc>2026.10</span> <span data-month>October 2026</span></p>
+    <p class="hint">Drag the red playhead, click a clip, or use the arrow keys. Space plays.</p>
+  </div>
+
+  <div class="timeline">
+    <div class="heads" aria-hidden="true">
+      <div class="head ruler-head"></div>
+      {tracks.map((t) => (
+        <div class="head" style={`height:${lanesPerTrack[t.id] * LANE + 8}px`}>
+          <span class="swatch" data-track={t.colour}></span>{t.label}
+        </div>
+      ))}
+    </div>
+    <div class="scroller" data-scroller>
+      <div class="inner" data-inner style={`--months:${total}`}>
+        <div class="ruler" data-seek>
+          {years.map((y) => <span class="year mono" style={`left:${pct(y.at)}`}>{y.y}</span>)}
+          {payload.items.filter((i) => i.kind === 'marker').map((m) => (
+            <button type="button" class="marker" data-id={m.id} style={`left:${pct(m.s + 0.5)}`} tabindex="-1">
+              <span class="visually-hidden">{m.title}</span>
+            </button>
+          ))}
+        </div>
+        {tracks.map((t) => (
+          <div class="track" data-seek style={`height:${lanesPerTrack[t.id] * LANE + 8}px`}>
+            {clips.filter((c) => c.track === t.id).map((c) => (
+              <button
+                type="button" class="clip" data-id={c.id} data-colour={trackColour[c.track]} data-degree={t.id === 'degree' ? '' : undefined}
+                style={`left:${pct(idx(c.start))};width:calc(${pct(idx(c.end) - idx(c.start) + 1)} - 2px);top:${laneOf[c.id] * LANE + 4}px`}
+                tabindex="-1" title={c.title}
+              >{c.title}</button>
+            ))}
+          </div>
+        ))}
+        <div class="playhead" data-playhead role="slider" tabindex="0"
+          aria-label="Timeline position" aria-valuemin="0" aria-valuemax={total} aria-valuenow="0">
+          <span class="cap"></span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <noscript>
+    <ol class="fallback">
+      {payload.items.sort((a, b) => b.s - a.s).map((i) => <li><strong>{i.title}.</strong> {i.summary}</li>)}
+    </ol>
+  </noscript>
+  <script type="application/json" data-payload set:html={JSON.stringify(payload)} />
+</section>
+
+<script>
+  type Item = {
+    id: string; kind: 'clip' | 'marker'; track: string; trackLabel: string; colour: string;
+    s: number; e: number; approx: boolean; ongoing?: boolean; title: string; summary: string;
+    links: { label: string; href: string }[]; caseStudy: string | null; order: number;
+    media: any;
+  };
+  const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+  const TRACK_RANK: Record<string, number> = { mark: 0, code: 1, studio: 2, courses: 3, degree: 4 };
+  const reduceMotion = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const esc = (s: string) => s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]!));
+
+  function init() {
+    const root = document.querySelector<HTMLElement>('[data-editor]');
+    if (!root || root.dataset.ready) return;
+    root.dataset.ready = '1';
+    const data = JSON.parse(root.querySelector('[data-payload]')!.textContent!);
+    const items: Item[] = data.items;
+    const total: number = data.total;
+    const [fy, fm] = (data.from as string).split('-').map(Number);
+    const viewer = root.querySelector<HTMLElement>('[data-viewer]')!;
+    const inspector = root.querySelector<HTMLElement>('[data-inspector]')!;
+    const playhead = root.querySelector<HTMLElement>('[data-playhead]')!;
+    const inner = root.querySelector<HTMLElement>('[data-inner]')!;
+    const scroller = root.querySelector<HTMLElement>('[data-scroller]')!;
+    const tc = root.querySelector<HTMLElement>('[data-tc]')!;
+    const monthEl = root.querySelector<HTMLElement>('[data-month]')!;
+    const playBtn = root.querySelector<HTMLButtonElement>('[data-play]')!;
+    const stops = [...new Set(items.map((i) => i.s))].sort((a, b) => a - b);
+
+    const ym = (n: number) => { const m = fm - 1 + Math.floor(n); return { y: fy + Math.floor(m / 12), m: ((m % 12) + 12) % 12 }; };
+    const monthName = (n: number) => { const { y, m } = ym(n); return `${MONTHS[m]} ${y}`; };
+    const span = (i: Item) => {
+      const a = ym(i.s), b = ym(i.e);
+      let text: string;
+      if (i.s === i.e) text = `${MONTHS[a.m]} ${a.y}`;
+      else if (a.y === b.y) text = `${MONTHS[a.m]} to ${MONTHS[b.m]} ${b.y}`;
+      else text = `${MONTHS[a.m]} ${a.y} to ${MONTHS[b.m]} ${b.y}`;
+      if (i.ongoing) text = `${MONTHS[a.m]} ${a.y} to now`;
+      return i.approx ? `Around ${text}` : text;
+    };
+
+    function pick(t: number): Item | undefined {
+      const m = Math.floor(t);
+      const here = items.filter((i) => i.s <= m && m <= i.e);
+      here.sort((a, b) => b.s - a.s || TRACK_RANK[a.track] - TRACK_RANK[b.track] || a.order - b.order);
+      return here[0];
+    }
+
+    function renderMedia(i: Item) {
+      const m = i.media;
+      if (m.kind === 'image') return `<img src="${m.src}" alt="" style="object-fit:${m.fit};object-position:${m.position}" decoding="async">`;
+      if (m.kind === 'video') return reduceMotion()
+        ? `<img src="${m.poster}" alt="" style="object-fit:cover">`
+        : `<video src="${m.src}" poster="${m.poster}" muted loop playsinline autoplay></video>`;
+      if (m.kind === 'terminal') return `<div class="term"><p class="term-title mono">${esc(m.title)}</p><pre class="mono">${m.lines.map(esc).join('\n')}</pre></div>`;
+      return `<div class="card" data-colour="${i.colour}"><p class="card-big">${esc(m.big)}</p><p class="card-small">${esc(m.small)}</p></div>`;
+    }
+
+    function renderInspector(i: Item) {
+      const links = i.links.map((l) => `<a href="${l.href}" rel="noopener">${esc(l.label)}</a>`);
+      if (i.caseStudy) links.unshift(`<a class="primary" href="/work/${i.caseStudy}">Read the case study</a>`);
+      return `
+        <p class="ins-track"><span class="swatch" data-track="${i.colour}"></span>${esc(i.trackLabel)}</p>
+        <h3 class="ins-title">${esc(i.title)}</h3>
+        <p class="ins-when">${esc(span(i))}</p>
+        <p class="ins-summary">${esc(i.summary)}</p>
+        ${links.length ? `<p class="ins-links">${links.join('')}</p>` : ''}`;
+    }
+
+    let t = 0;
+    let active: Item | undefined;
+    function setT(next: number, opts: { follow?: boolean } = {}) {
+      t = Math.min(total - 0.001, Math.max(0, next));
+      playhead.style.left = `${(t / total) * 100}%`;
+      playhead.setAttribute('aria-valuenow', String(Math.floor(t)));
+      const cur = pick(t);
+      playhead.setAttribute('aria-valuetext', `${monthName(t)}${cur ? `: ${cur.title}` : ''}`);
+      const { y, m } = ym(t);
+      tc.textContent = `${y}.${String(m + 1).padStart(2, '0')}`;
+      monthEl.textContent = `${MONTHS[m]} ${y}`;
+      if (cur && cur !== active) {
+        active = cur;
+        viewer.innerHTML = renderMedia(cur);
+        inspector.innerHTML = renderInspector(cur);
+        root.querySelectorAll('.is-active').forEach((el) => el.classList.remove('is-active'));
+        root.querySelectorAll(`[data-id="${cur.id}"]`).forEach((el) => el.classList.add('is-active'));
+        preload(cur);
+      }
+      if (opts.follow) follow();
+    }
+
+    function follow() {
+      if (scroller.scrollWidth <= scroller.clientWidth) return;
+      const x = (t / total) * inner.scrollWidth;
+      const left = scroller.scrollLeft, w = scroller.clientWidth;
+      if (x < left + w * 0.2 || x > left + w * 0.8) scroller.scrollTo({ left: x - w / 2, behavior: reduceMotion() ? 'auto' : 'smooth' });
+    }
+
+    const loaded = new Set<string>();
+    function preload(cur: Item) {
+      const n = stops.indexOf(cur.s);
+      for (const s of [stops[n - 1], stops[n + 1]]) {
+        const it = s === undefined ? undefined : pick(s + 0.5);
+        const src = it?.media?.kind === 'image' ? it.media.src : it?.media?.kind === 'video' ? it.media.poster : null;
+        if (src && !loaded.has(src)) { loaded.add(src); const im = new Image(); im.src = src; }
+      }
+    }
+
+    // Seeking: click or drag anywhere on the ruler or a track.
+    const timeAt = (clientX: number) => { const r = inner.getBoundingClientRect(); return ((clientX - r.left) / r.width) * total; };
+    let dragging = false;
+    const startDrag = (e: PointerEvent) => {
+      if ((e.target as HTMLElement).closest('.clip, .marker')) return;
+      if (e.pointerType === 'touch' && !(e.target as HTMLElement).closest('[data-playhead]')) return; // let touch scroll
+      dragging = true; stop();
+      (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+      setT(timeAt(e.clientX));
+      e.preventDefault();
+    };
+    inner.addEventListener('pointerdown', startDrag);
+    inner.addEventListener('pointermove', (e) => { if (dragging) setT(timeAt(e.clientX)); });
+    inner.addEventListener('pointerup', () => { dragging = false; });
+    inner.addEventListener('pointercancel', () => { dragging = false; });
+    inner.querySelectorAll<HTMLElement>('[data-seek]').forEach((el) => el.addEventListener('click', (e) => {
+      if ((e.target as HTMLElement).closest('.clip, .marker')) return;
+      if ((e as PointerEvent).pointerType === 'touch') setT(timeAt((e as MouseEvent).clientX));
+    }));
+    root.querySelectorAll<HTMLElement>('.clip, .marker').forEach((el) => el.addEventListener('click', () => {
+      stop();
+      const it = items.find((i) => i.id === el.dataset.id)!;
+      setT(it.s + 0.5, { follow: true });
+      if (active !== it) { active = it; viewer.innerHTML = renderMedia(it); inspector.innerHTML = renderInspector(it); root.querySelectorAll('.is-active').forEach((x) => x.classList.remove('is-active')); el.classList.add('is-active'); }
+      playhead.focus({ preventScroll: true });
+    }));
+
+    // Keyboard: arrows jump clip to clip, Shift+arrows move a month, space plays.
+    playhead.addEventListener('keydown', (e) => {
+      const m = Math.floor(t);
+      let handled = true;
+      if (e.key === 'ArrowRight' || e.key === 'ArrowUp') setT(e.shiftKey ? t + 1 : (stops.find((s) => s > m) ?? m) + 0.5, { follow: true });
+      else if (e.key === 'ArrowLeft' || e.key === 'ArrowDown') setT(e.shiftKey ? t - 1 : ([...stops].reverse().find((s) => s < m) ?? m) + 0.5, { follow: true });
+      else if (e.key === 'Home') setT(0.5, { follow: true });
+      else if (e.key === 'End') setT(total - 0.5, { follow: true });
+      else if (e.key === ' ' || e.key === 'k' || e.key === 'K') toggle();
+      else handled = false;
+      if (handled) { e.preventDefault(); if (e.key !== ' ' && e.key.toLowerCase() !== 'k') stop(); }
+    });
+    root.querySelector('[data-prev]')!.addEventListener('click', () => { stop(); const m = Math.floor(t); setT(([...stops].reverse().find((s) => s < m) ?? 0) + 0.5, { follow: true }); });
+    root.querySelector('[data-next]')!.addEventListener('click', () => { stop(); const m = Math.floor(t); setT((stops.find((s) => s > m) ?? total - 1) + 0.5, { follow: true }); });
+
+    // Play: the one orchestrated motion on the site, and only when asked for.
+    let raf = 0, last = 0, stepTimer = 0;
+    const SPEED = 2.4; // months per second
+    function frame(now: number) {
+      const dt = last ? (now - last) / 1000 : 0; last = now;
+      setT(t + dt * SPEED, { follow: true });
+      if (t >= total - 0.01) { stop(); return; }
+      raf = requestAnimationFrame(frame);
+    }
+    function play() {
+      if (t >= total - 1) setT(0);
+      playBtn.dataset.playing = '1'; playBtn.setAttribute('aria-label', 'Pause');
+      if (reduceMotion()) {
+        stepTimer = window.setInterval(() => {
+          const nxt = stops.find((s) => s > Math.floor(t));
+          if (nxt === undefined) stop(); else setT(nxt + 0.5, { follow: true });
+        }, 2200);
+      } else { last = 0; raf = requestAnimationFrame(frame); }
+    }
+    function stop() {
+      cancelAnimationFrame(raf); clearInterval(stepTimer); raf = 0; stepTimer = 0;
+      delete playBtn.dataset.playing; playBtn.setAttribute('aria-label', 'Play the timeline');
+    }
+    const toggle = () => (playBtn.dataset.playing ? stop() : play());
+    playBtn.addEventListener('click', toggle);
+    document.addEventListener('astro:before-swap', stop, { once: true });
+
+    const start = items.find((i) => i.id === 'eng-os')!;
+    setT(start.s + 0.5);
+    requestAnimationFrame(() => { scroller.scrollLeft = scroller.scrollWidth; });
+  }
+  document.addEventListener('astro:page-load', init);
+</script>
+
+<style>
+  .editor {
+    background: var(--panel);
+    border: 1px solid var(--rule);
+    border-radius: 10px;
+    overflow: hidden;
+  }
+  .monitor-row { display: grid; grid-template-columns: minmax(0, 1.7fr) minmax(17rem, 1fr); }
+  .viewer {
+    position: relative; height: clamp(16rem, 40vh, 30rem); background: var(--screen); overflow: hidden;
+  }
+  .viewer :global(img), .viewer :global(video) { width: 100%; height: 100%; object-fit: cover; }
+  .viewer :global(.term) { height: 100%; padding: clamp(1rem, 3vw, 2rem); color: #d7dbe2; overflow: hidden; }
+  .viewer :global(.term-title) { color: #8b92a0; font-size: var(--s-1); margin-bottom: 1rem; }
+  .viewer :global(pre) { margin: 0; font-size: clamp(0.72rem, 1.15vw, 0.95rem); line-height: 1.7; white-space: pre-wrap; }
+  .viewer :global(.card) {
+    height: 100%; display: flex; flex-direction: column; justify-content: flex-end;
+    padding: clamp(1.25rem, 4vw, 3rem); color: #fff;
+  }
+  .viewer :global(.card[data-colour='code']) { background: var(--code); }
+  .viewer :global(.card[data-colour='studio']) { background: var(--studio); }
+  .viewer :global(.card[data-colour='learn']) { background: var(--learn); }
+  .viewer :global(.card[data-colour='mark']) { background: var(--mark); }
+  .viewer :global(.card-big) {
+    font-size: clamp(2rem, 6.5vw, 5.4rem); line-height: 0.95; font-weight: 800;
+    font-variation-settings: 'wdth' 125; letter-spacing: -0.02em; margin: 0 0 0.75rem; max-width: 14ch;
+  }
+  .viewer :global(.card-small) { margin: 0; max-width: 46ch; opacity: 0.92; }
+
+  .inspector { padding: clamp(1.25rem, 2.5vw, 2rem); border-left: 1px solid var(--rule); display: flex; flex-direction: column; }
+  .inspector :global(.ins-track) { color: var(--ink-2); font-size: var(--s-1); margin-bottom: 0.9rem; }
+  .inspector :global(.ins-title) { font-size: var(--s2); font-weight: 720; font-variation-settings: 'wdth' 112; letter-spacing: -0.01em; }
+  .inspector :global(.ins-when) { color: var(--ink-2); margin: 0.5rem 0 1rem; }
+  .inspector :global(.ins-summary) { max-width: 44ch; }
+  .inspector :global(.ins-links) { margin-top: auto; display: flex; flex-wrap: wrap; gap: 0.5rem 1.1rem; padding-top: 0.5rem; }
+  .inspector :global(.ins-links .primary) { font-weight: 650; }
+
+  .transport {
+    display: flex; flex-wrap: wrap; align-items: center; gap: 0.75rem 1.25rem;
+    padding: 0.7rem clamp(0.75rem, 2vw, 1.25rem); border-block: 1px solid var(--rule); background: var(--paper);
+  }
+  .buttons { display: flex; gap: 0.35rem; }
+  .transport button {
+    width: 2.4rem; height: 2.4rem; display: grid; place-items: center; cursor: pointer;
+    background: var(--panel); border: 1px solid var(--rule); border-radius: var(--radius); color: var(--ink);
+  }
+  .transport button:hover { background: #fff; }
+  .transport svg { width: 1.05rem; height: 1.05rem; fill: currentColor; stroke: currentColor; stroke-width: 2; stroke-linejoin: round; }
+  .play .i-pause { display: none; }
+  .play[data-playing] .i-play { display: none; }
+  .play[data-playing] .i-pause { display: block; }
+  .play[data-playing] { background: var(--ink); color: var(--panel); }
+  .timecode { margin: 0; display: flex; gap: 0.75rem; align-items: baseline; }
+  .timecode .mono { font-size: var(--s1); font-weight: 500; letter-spacing: 0.02em; }
+  .timecode span:last-child { color: var(--ink-2); }
+  .hint { margin: 0 0 0 auto; color: var(--ink-3); font-size: var(--s-1); }
+
+  .timeline { display: grid; grid-template-columns: 6.25rem minmax(0, 1fr); }
+  .heads { border-right: 1px solid var(--rule); background: var(--paper); }
+  .head {
+    display: flex; align-items: center; padding-inline: 0.85rem; font-size: var(--s-1); color: var(--ink-2);
+    border-bottom: 1px solid var(--rule);
+  }
+  .ruler-head { height: 30px; }
+  .scroller { overflow-x: auto; overscroll-behavior-x: contain; scrollbar-width: thin; }
+  .inner { position: relative; min-width: 100%; width: calc(var(--months) * var(--mw, 72px)); touch-action: pan-x; }
+  .ruler {
+    position: relative; height: 30px; border-bottom: 1px solid var(--rule); cursor: ew-resize;
+    background-image: linear-gradient(to right, var(--rule) 1px, transparent 1px);
+    background-size: calc(100% / var(--months)) 7px; background-repeat: repeat-x; background-position: 0 100%;
+  }
+  .year { position: absolute; top: 5px; font-size: 0.72rem; color: var(--ink-2); padding-left: 4px; border-left: 1px solid var(--ink-3); line-height: 1.1; }
+  .marker {
+    position: absolute; top: 9px; width: 11px; height: 11px; margin-left: -5.5px; padding: 0; cursor: pointer;
+    background: var(--mark); border: 0; transform: rotate(45deg); border-radius: 1px;
+  }
+  .marker:global(.is-active) { outline: 2px solid var(--ink); outline-offset: 2px; }
+  .track { position: relative; border-bottom: 1px solid var(--rule); cursor: ew-resize; }
+  .track:nth-of-type(odd) { background: rgba(255, 255, 255, 0.35); }
+  .clip {
+    position: absolute; height: 22px; padding: 0 0.45rem; border: 0; border-radius: 3px; cursor: pointer;
+    color: #fff; font: 500 0.72rem/22px var(--sans); text-align: left;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .clip[data-colour='code'] { background: var(--code); }
+  .clip[data-colour='studio'] { background: var(--studio); color: #000; }
+  .clip[data-colour='learn'] { background: var(--learn); }
+  .clip[data-degree] { color: #000; background: repeating-linear-gradient(135deg, #8fcac2 0 10px, #a6d6cf 10px 20px); box-shadow: inset 0 0 0 1px var(--learn); }
+  .clip:hover { filter: brightness(1.12); }
+  .clip:global(.is-active) { box-shadow: 0 0 0 2px var(--ink); z-index: 1; }
+
+  .playhead {
+    position: absolute; top: 0; bottom: 0; width: 2px; margin-left: -1px; background: var(--playhead);
+    z-index: 3; cursor: ew-resize; touch-action: none;
+  }
+  .playhead::before { content: ''; position: absolute; inset: 0 -10px; }
+  .cap {
+    position: absolute; top: 0; left: 50%; width: 15px; height: 18px; transform: translateX(-50%);
+    background: var(--playhead); clip-path: polygon(0 0, 100% 0, 100% 60%, 50% 100%, 0 60%);
+  }
+  .playhead:focus-visible { outline: none; box-shadow: 0 0 0 3px rgba(70, 85, 212, 0.55); }
+
+  .fallback { padding: 1.5rem 2rem; margin: 0; }
+
+  @media (max-width: 60rem) {
+    .monitor-row { grid-template-columns: 1fr; }
+    .viewer { height: auto; aspect-ratio: 16 / 10; }
+    .inspector { border-left: 0; border-top: 1px solid var(--rule); min-height: 15rem; }
+    .hint { margin-left: 0; flex-basis: 100%; }
+  }
+  @media (max-width: 48rem) {
+    .editor { display: flex; flex-direction: column; }
+    .monitor-row { display: contents; }
+    .viewer { order: 1; }
+    .transport { order: 2; }
+    .timeline { order: 3; border-bottom: 1px solid var(--rule); }
+    .inspector { order: 4; border-top: 0; min-height: 0; }
+    .viewer :global(pre) { font-size: 0.68rem; line-height: 1.55; }
+    .viewer :global(.term-title) { margin-bottom: 0.5rem; }
+    .hint { display: none; }
+    .timecode span:last-child { display: none; }
+    .transport { flex-wrap: nowrap; }
+    .inner { --mw: 54px; }
+    .timeline { grid-template-columns: 4.5rem minmax(0, 1fr); }
+    .head { padding-inline: 0.5rem; }
+  }
+</style>

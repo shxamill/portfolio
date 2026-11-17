@@ -1,0 +1,117 @@
+---
+const samples = [
+  { label: 'Wire-style report', text: 'NASA confirms the Artemis crew returned safely after the lunar flyby, officials said on Tuesday.' },
+  { label: 'Viral post', text: "SHOCKING!!! Doctors don't want you to know this one weird trick that cures everything, share before it gets deleted" },
+  { label: 'False claim, wire style', text: 'WASHINGTON (Reuters) - The moon was officially declared a part of Ohio on Tuesday, senior officials said in a statement.' },
+];
+---
+<section class="demo" aria-labelledby="demo-title" data-fn-demo>
+  <h2 id="demo-title" class="demo-title">Try the model</h2>
+  <p class="demo-intro measure">
+    This is the trained model from the project, running in your browser. Nothing you type leaves this page.
+    The score says how much the text looks like the real-news articles it was trained on. It does not check facts.
+  </p>
+  <div class="samples" role="group" aria-label="Example texts">
+    {samples.map((s) => <button type="button" data-sample={s.text}>{s.label}</button>)}
+  </div>
+  <label for="fn-text" class="visually-hidden">Text to score</label>
+  <textarea id="fn-text" rows="4" placeholder="Paste a headline or the first paragraph of an article">{samples[0].text}</textarea>
+  <div class="actions">
+    <button type="button" class="run" data-run>Score this text</button>
+    <p class="status" data-status role="status"></p>
+  </div>
+  <div class="result" data-result hidden>
+    <div class="meter">
+      <div class="bar"><span data-bar></span></div>
+      <p class="reading"><span class="mono" data-pct></span> <span data-verdict></span></p>
+    </div>
+    <p class="words-label">How each word moved the score: <span class="k real">towards real reporting</span> <span class="k fake">towards fake</span></p>
+    <p class="words" data-words></p>
+  </div>
+</section>
+
+<script>
+  import { score, cleanText } from '../lib/fakenews.js';
+  let model: any = null;
+  async function load() {
+    if (!model) model = await fetch('/models/fakenews.json').then((r) => r.json());
+    return model;
+  }
+  function init() {
+    const root = document.querySelector<HTMLElement>('[data-fn-demo]');
+    if (!root || root.dataset.ready) return;
+    root.dataset.ready = '1';
+    const ta = root.querySelector<HTMLTextAreaElement>('textarea')!;
+    const status = root.querySelector<HTMLElement>('[data-status]')!;
+    const result = root.querySelector<HTMLElement>('[data-result]')!;
+    const run = async () => {
+      if (!ta.value.trim()) { status.textContent = 'Type or paste some text first.'; result.hidden = true; return; }
+      status.textContent = model ? '' : 'Loading the model (140 KB)…';
+      let m;
+      try { m = await load(); } catch { status.textContent = 'The model file did not load. Check your connection and try again.'; return; }
+      const r = score(m, ta.value);
+      if (!r.known) { status.textContent = 'None of these words are in the model’s 5,000-word vocabulary, so it cannot score this text. Try English news text.'; result.hidden = true; return; }
+      status.textContent = `${r.known} of the model’s known words found.`;
+      const pct = Math.round(r.real * 100);
+      const shown = r.real > 0.99 || r.real < 0.01 ? (r.real * 100).toFixed(1) : String(pct);
+      root.querySelector<HTMLElement>('[data-pct]')!.textContent = `${shown}%`;
+      root.querySelector<HTMLElement>('[data-verdict]')!.textContent = pct >= 50 ? 'reads like real reporting' : 'reads like fake or viral content';
+      const bar = root.querySelector<HTMLElement>('[data-bar]')!;
+      bar.style.width = `${pct}%`;
+      bar.dataset.side = pct >= 50 ? 'real' : 'fake';
+      // Show the cleaned words the model saw, tinted by their contribution.
+      const max = Math.max(0.0001, ...[...r.contrib.values()].map(Math.abs));
+      const words = cleanText(ta.value).split(/\s+/).filter(Boolean);
+      const out = root.querySelector<HTMLElement>('[data-words]')!;
+      out.replaceChildren(...words.map((w) => {
+        const span = document.createElement('span');
+        span.textContent = w;
+        const c = r.contrib.get(w);
+        if (c !== undefined) {
+          span.className = c >= 0 ? 'w real' : 'w fake';
+          span.style.setProperty('--a', String(0.15 + 0.85 * Math.abs(c) / max));
+          span.title = `${c >= 0 ? '+' : ''}${c.toFixed(3)}`;
+        }
+        return span;
+      }));
+      result.hidden = false;
+    };
+    root.querySelector('[data-run]')!.addEventListener('click', run);
+    root.querySelectorAll<HTMLButtonElement>('[data-sample]').forEach((b) => b.addEventListener('click', () => { ta.value = b.dataset.sample!; run(); }));
+    ta.addEventListener('keydown', (e) => { if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) run(); });
+  }
+  document.addEventListener('astro:page-load', init);
+</script>
+
+<style>
+  .demo { background: var(--panel); border: 1px solid var(--rule); border-radius: 10px; padding: clamp(1.25rem, 3vw, 2.25rem); }
+  .demo-title { font-size: var(--s2); font-variation-settings: 'wdth' 118; font-weight: 740; margin-bottom: 0.75rem; }
+  .demo-intro { color: var(--ink-2); }
+  .samples { display: flex; flex-wrap: wrap; gap: 0.5rem; margin: 1.25rem 0 0.75rem; }
+  button { font: inherit; cursor: pointer; border-radius: var(--radius); }
+  .samples button { background: var(--paper); border: 1px solid var(--rule); padding: 0.4rem 0.8rem; font-size: var(--s-1); color: var(--ink); }
+  .samples button:hover { background: #fff; }
+  textarea {
+    width: 100%; font: inherit; padding: 0.85rem 1rem; border: 1px solid var(--rule); border-radius: var(--radius);
+    background: #fff; color: var(--ink); resize: vertical; min-height: 7rem;
+  }
+  .actions { display: flex; flex-wrap: wrap; align-items: center; gap: 1rem; margin-top: 0.75rem; }
+  .run { background: var(--ink); color: var(--panel); border: 0; padding: 0.7rem 1.2rem; font-weight: 650; }
+  .run:hover { background: var(--code); }
+  .status { margin: 0; color: var(--ink-2); font-size: var(--s-1); }
+  .result { margin-top: 1.5rem; }
+  .bar { height: 12px; background: var(--well); border-radius: 6px; overflow: hidden; }
+  .bar span { display: block; height: 100%; width: 0; transition: width 0.4s ease; background: var(--learn); }
+  .bar span[data-side='fake'] { background: var(--mark); }
+  .reading { margin: 0.6rem 0 1.25rem; }
+  .reading .mono { font-size: var(--s2); font-weight: 500; margin-right: 0.35rem; }
+  .words-label { font-size: var(--s-1); color: var(--ink-2); }
+  .k { padding: 0.05rem 0.4rem; border-radius: 3px; margin-left: 0.35rem; }
+  .k.real { background: rgba(23, 134, 122, 0.25); }
+  .k.fake { background: rgba(210, 63, 91, 0.25); }
+  .words { line-height: 2.1; }
+  .words :global(span) { margin-right: 0.3em; }
+  .words :global(.w) { padding: 0.1rem 0.3rem; border-radius: 3px; }
+  .words :global(.w.real) { background: rgba(23, 134, 122, var(--a)); }
+  .words :global(.w.fake) { background: rgba(210, 63, 91, var(--a)); }
+</style>

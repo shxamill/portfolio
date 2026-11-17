@@ -1,0 +1,215 @@
+---
+import { Image } from 'astro:assets';
+import Base from '../layouts/Base.astro';
+import Editor from '../components/Editor.astro';
+import { work } from '../data/work';
+import lakshi from '../assets/media/velune-lakshi.jpg';
+
+// What each project shows on the homepage. Each feature gets a different kind of preview.
+const features = [
+  { slug: 'engineering-os', preview: 'terminal' as const },
+  { slug: 'fake-news-detector', preview: 'words' as const },
+  { slug: 'velune', preview: 'image' as const, image: lakshi, imageAlt: 'Bride in traditional jewellery from a Velune shoot.' },
+  { slug: 'mern-apps', preview: 'routes' as const },
+].map((f) => ({ ...f, study: work.find((w) => w.slug === f.slug)! }));
+
+const toolkit = [
+  { name: 'Languages', items: 'Java, Python, JavaScript, TypeScript, C' },
+  { name: 'Front end', items: 'React, Next.js, Astro, Tailwind CSS, GSAP, Framer Motion' },
+  { name: 'Back end', items: 'Node.js, Express, MongoDB, REST APIs, JWT, Stripe, Flask, Django' },
+  { name: 'Machine learning', items: 'scikit-learn, NLP, TF-IDF, neural networks, Plotly, Streamlit, Jupyter' },
+  { name: 'Tooling', items: 'Git, GitHub Actions, Vercel, Linux, ffmpeg, Figma, Claude Code' },
+  { name: 'Studio', items: 'Content, social media, branding, Meta Ads, video production' },
+];
+---
+<Base>
+  <div class="wrap">
+    <section class="intro" aria-labelledby="name">
+      <h1 id="name">Muhammed Shamil</h1>
+      <p class="lead measure">
+        I build web apps and machine-learning tools, and I co-founded Velune, a film and photo studio in Bengaluru.
+        This is my last three years, laid out the way I would edit them.
+      </p>
+    </section>
+
+    <Editor />
+
+    <section id="work" class="work" aria-labelledby="work-title">
+      <h2 id="work-title" class="section-title">Selected work</h2>
+      <div class="features">
+        {features.map(({ study, preview, image, imageAlt }) => (
+          <article class="feature" data-colour={study.colour}>
+            <a class="preview" href={`/work/${study.slug}`} tabindex="-1" aria-hidden="true">
+              {preview === 'terminal' && (
+                <pre class="mono pre-dark">{`$ verify-hooks.mjs
+377/377 hook tests passed
+$ test-engines.mjs
+107/107 engine tests passed
+$ validate-org.mjs
+OK: engineering-os plugin valid`}</pre>
+              )}
+              {preview === 'words' && (
+                <div class="words-preview">
+                  <p><span class="r">washington</span> <span class="r">reuters</span> officials <span class="r">said</span> on <span class="r">tuesday</span></p>
+                  <p><span class="f">breaking</span> <span class="f">watch</span> this <span class="f">video</span> <span class="f">via</span> <span class="f">image</span></p>
+                </div>
+              )}
+              {preview === 'image' && image && (
+                <Image src={image} alt={imageAlt ?? ''} widths={[480, 800, 1100]} sizes="(max-width: 60rem) 100vw, 50vw" class="photo" />
+              )}
+              {preview === 'routes' && (
+                <pre class="mono pre-light">{`POST /api/user/login
+GET  /api/food/list
+POST /api/cart/add       auth
+POST /api/order/place    auth  stripe
+POST /api/order/verify`}</pre>
+              )}
+            </a>
+            <div class="feature-text">
+              <h3><a href={`/work/${study.slug}`}>{study.title}</a></h3>
+              <p class="feature-line">{study.line}</p>
+              <dl class="facts">
+                {study.evidence.slice(0, 3).map((e) => (<div><dt>{e.label}</dt><dd class="mono">{e.value}</dd></div>))}
+              </dl>
+              <p class="stack">{study.stack.join(', ')}</p>
+              <a class="more" href={`/work/${study.slug}`}>Read the case study</a>
+            </div>
+          </article>
+        ))}
+      </div>
+    </section>
+
+    <section id="about" class="about" aria-labelledby="about-title">
+      <h2 id="about-title" class="section-title">About</h2>
+      <div class="about-grid">
+        <div class="bio measure">
+          <p>
+            I’m from Kerala and I finished a BCA in Artificial Intelligence,
+            Cloud Computing and DevOps in 2026 through Yenepoya University’s program with IBM. IBM credits me as an <a href="https://www.credly.com/badges/8fbacc4d-b1c8-4a65-906d-6ab5278c1bf6">Artificial Intelligence and Machine Learning Graduate</a> for 450 hours of classes, labs and industry projects.
+          </p>
+          <p>
+            Most of what I know I learned by building: a MERN delivery app, a fake news classifier for a TCS iON industry project,
+            and lately Engineering OS, where I spend my time on the unglamorous part of AI coding: tests, CI and proving work is done.
+          </p>
+          <p>
+            At Velune I sit between the camera and the code. I build our clients’ websites, plan their content and run their
+            campaigns, which has taught me to talk to people who do not care how something is built, only whether it works for them.
+          </p>
+          <p>
+            I speak English, Malayalam and Hindi, understand Tamil, and I am learning Japanese. I like leading small teams and I am
+            looking for a developer role where I can keep shipping real things.
+          </p>
+        </div>
+        <div class="side">
+          <h3 class="side-title">Toolkit</h3>
+          <dl class="toolkit">
+            {toolkit.map((t) => (<div><dt>{t.name}</dt><dd>{t.items}</dd></div>))}
+          </dl>
+          <h3 class="side-title">Credentials</h3>
+          <ul class="creds">
+            <li>BCA, AI, Cloud Computing and DevOps, Yenepoya University, 2026</li>
+            <li>IBM Artificial Intelligence and Machine Learning Graduate, 2026</li>
+            <li>TCS iON industry project, 135 hours, 2026</li>
+            <li>20 Coursera courses, including Microsoft, Oracle, Meta, Duke and Illinois Tech</li>
+            <li>Top 10 of 30 teams, IBM ICE Day national hackathon</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <section id="contact" class="contact" aria-labelledby="contact-title">
+      <h2 id="contact-title" class="section-title">Contact</h2>
+      <p class="contact-line">
+        The quickest way to reach me is email: <a class="email" href="mailto:shxamill@gmail.com">shxamill@gmail.com</a>
+      </p>
+      <ul class="elsewhere">
+        <li><a href="https://www.linkedin.com/in/shxamill">LinkedIn</a></li>
+        <li><a href="https://github.com/shxamill">GitHub</a></li>
+        <li><a href="https://www.veluneproductions.com">Velune</a></li>
+        <li><a href="/Muhammed_Shamil_P_Resume.pdf">Résumé (PDF)</a></li>
+      </ul>
+    </section>
+  </div>
+</Base>
+
+<style>
+  .intro {
+    display: grid; grid-template-columns: minmax(0, 1fr) minmax(16rem, 26rem); align-items: end; gap: 1rem clamp(1.5rem, 4vw, 3.5rem);
+    padding-block: clamp(1.5rem, 5vw, 3.5rem) clamp(1.25rem, 3vw, 2rem);
+  }
+  h1 {
+    font-size: clamp(2.75rem, 8.2vw, 8rem);
+    line-height: 0.84;
+    font-weight: 820;
+    font-variation-settings: 'wdth' 125;
+    letter-spacing: -0.035em;
+    margin-left: -0.04em;
+  }
+  .lead { font-size: var(--s1); line-height: 1.4; margin: 0; color: var(--ink-2); max-width: 34ch; }
+  @media (max-width: 75rem) { .intro { grid-template-columns: 1fr; } .lead { max-width: 44ch; } }
+  @media (max-width: 40rem) { .lead { font-size: 1.15rem; } }
+
+  .work, .about, .contact { padding-top: clamp(4rem, 9vw, 7.5rem); }
+  .section-title { margin-bottom: clamp(1.5rem, 3.5vw, 2.5rem); }
+
+  .features { display: grid; gap: clamp(2.5rem, 5vw, 4rem); }
+  .feature {
+    display: grid; grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr); gap: clamp(1.25rem, 3.5vw, 3rem);
+    align-items: start; padding-top: clamp(1.25rem, 2.5vw, 2rem); border-top: 4px solid var(--c);
+  }
+  .feature[data-colour='code'] { --c: var(--code); }
+  .feature[data-colour='studio'] { --c: var(--studio); }
+  .feature:nth-child(even) .preview { order: 2; }
+  .preview {
+    display: block; aspect-ratio: 16 / 10; border-radius: 8px; overflow: hidden; text-decoration: none;
+    background: var(--panel); border: 1px solid var(--rule);
+  }
+  .pre-dark, .pre-light { margin: 0; height: 100%; padding: clamp(1rem, 3vw, 2rem); font-size: clamp(0.72rem, 1.2vw, 0.95rem); line-height: 1.75; white-space: pre-wrap; }
+  .pre-dark { background: var(--screen); color: #d7dbe2; }
+  .pre-light { background: var(--panel); color: var(--ink); }
+  .words-preview p { margin: 0 0 0.6em; }
+  .words-preview {
+    margin: 0; height: 100%; display: flex; flex-direction: column; justify-content: center; padding: clamp(1rem, 3vw, 2rem);
+    font-size: clamp(1.1rem, 2.4vw, 2rem); font-variation-settings: 'wdth' 112; line-height: 1.9; font-weight: 600;
+  }
+  .words-preview span { padding: 0.05em 0.25em; border-radius: 4px; }
+  .words-preview .r { background: rgba(23, 134, 122, 0.3); }
+  .words-preview .f { background: rgba(210, 63, 91, 0.3); }
+  .photo { width: 100%; height: 100%; object-fit: cover; object-position: 50% 30%; }
+  .feature-text h3 { font-size: var(--s2); font-weight: 740; font-variation-settings: 'wdth' 115; letter-spacing: -0.01em; }
+  .feature-text h3 a { text-decoration: none; }
+  .feature-text h3 a:hover { text-decoration: underline; }
+  .feature-line { font-size: var(--s0); margin: 0.75rem 0 1.25rem; max-width: 48ch; }
+  .facts { display: flex; flex-wrap: wrap; gap: 1rem 2rem; margin: 0 0 1rem; }
+  .facts div { display: flex; flex-direction: column-reverse; }
+  .facts dt { color: var(--ink-2); font-size: var(--s-1); }
+  .facts dd { margin: 0; font-size: var(--s1); font-weight: 500; }
+  .stack { color: var(--ink-2); font-size: var(--s-1); max-width: 52ch; }
+  .more { font-weight: 650; }
+
+  .about-grid { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr); gap: clamp(2rem, 5vw, 5rem); }
+  .bio p { font-size: 1.125rem; line-height: 1.6; }
+  .side-title { font-size: var(--s0); font-weight: 700; margin: 0 0 0.75rem; }
+  .side-title + * { margin-bottom: 2rem; }
+  .toolkit { margin: 0; display: grid; gap: 0.6rem; }
+  .toolkit div { display: grid; grid-template-columns: 9rem 1fr; gap: 1rem; border-top: 1px solid var(--rule); padding-top: 0.6rem; }
+  .toolkit dt { color: var(--ink-2); }
+  .toolkit dd { margin: 0; }
+  .creds { margin: 0; padding-left: 1.1rem; }
+  .creds li { margin-bottom: 0.4rem; }
+
+  .contact-line { font-size: var(--s1); max-width: none; }
+  .email {
+    display: block; margin-top: 0.4rem; font-size: clamp(1.75rem, 6vw, 4.75rem); font-weight: 780;
+    font-variation-settings: 'wdth' 125; letter-spacing: -0.02em; line-height: 1.05; overflow-wrap: anywhere;
+  }
+  .elsewhere { display: flex; flex-wrap: wrap; gap: 0.75rem 2rem; list-style: none; padding: 0; margin: 2rem 0 0; font-size: var(--s1); }
+
+  @media (max-width: 60rem) {
+    .feature, .about-grid { grid-template-columns: 1fr; }
+    .feature:nth-child(even) .preview { order: 0; }
+  }
+  @media (max-width: 30rem) {
+    .toolkit div { grid-template-columns: 1fr; gap: 0.15rem; }
+  }
+</style>
