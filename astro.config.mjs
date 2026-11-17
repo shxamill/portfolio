@@ -2,7 +2,7 @@
 import { defineConfig } from 'astro/config';
 
 export default defineConfig({
-  site: 'https://muhammed-shamil.vercel.app',
+  site: 'https://shxamill.vercel.app',
   prefetch: { prefetchAll: true },
   devToolbar: { enabled: false },
 });

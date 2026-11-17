@@ -2,7 +2,7 @@
 
 [![CI](https://github.com/shxamill/portfolio/actions/workflows/ci.yml/badge.svg)](https://github.com/shxamill/portfolio/actions/workflows/ci.yml)
 
-My personal site: **https://muhammed-shamil.vercel.app**
+My personal site: **https://shxamill.vercel.app**
 
 ![Homepage: a video-editor timeline of my career](public/og.png)
 
