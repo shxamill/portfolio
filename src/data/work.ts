@@ -191,7 +191,7 @@ export const work: CaseStudy[] = [
     line: 'Two MERN-stack builds: a full ordering platform with payments, and an AI task manager that reached the top 10 at a national IBM hackathon.',
     colour: 'code',
     role: 'Full-stack developer; one of four in the hackathon team',
-    when: 'Around December 2024 to March 2025',
+    when: 'December 2024 to March 2025',
     stack: ['MongoDB', 'Express', 'React', 'Node.js', 'Vite', 'JWT', 'Stripe'],
     links: [{ label: 'Food delivery source on GitHub', href: 'https://github.com/shxamill/food_del' }],
     evidence: [

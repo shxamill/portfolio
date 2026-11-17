@@ -4,6 +4,7 @@ import Base from '../layouts/Base.astro';
 import Editor from '../components/Editor.astro';
 import { work } from '../data/work';
 import lakshi from '../assets/media/velune-lakshi.jpg';
+import portrait from '../assets/media/shamil.jpg';
 
 // What each project shows on the homepage. Each feature gets a different kind of preview.
 const features = [
@@ -101,6 +102,7 @@ POST /api/order/verify`}</pre>
           </p>
         </div>
         <div class="side">
+          <Image src={portrait} alt="Muhammed Shamil in a dark suit and tie." widths={[280, 420, 560]} sizes="(max-width: 60rem) 60vw, 18rem" class="portrait" />
           <h3 class="side-title">Toolkit</h3>
           <dl class="toolkit">
             {toolkit.map((t) => (<div><dt>{t.name}</dt><dd>{t.items}</dd></div>))}
@@ -189,6 +191,7 @@ POST /api/order/verify`}</pre>
 
   .about-grid { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr); gap: clamp(2rem, 5vw, 5rem); }
   .bio p { font-size: 1.125rem; line-height: 1.6; }
+  .portrait { width: min(100%, 18rem); height: auto; border-radius: 8px; border: 1px solid var(--rule); margin-bottom: 2rem; background: #fff; }
   .side-title { font-size: var(--s0); font-weight: 700; margin: 0 0 0.75rem; }
   .side-title + * { margin-bottom: 2rem; }
   .toolkit { margin: 0; display: grid; gap: 0.6rem; }

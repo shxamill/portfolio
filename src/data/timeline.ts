@@ -46,7 +46,7 @@ export type Marker = { id: string; at: string; approx?: boolean; title: string; 
 export const clips: Clip[] = [
   // Code
   {
-    id: 'food-del', track: 'code', title: 'Food delivery app', start: '2024-12', end: '2025-03', approx: true,
+    id: 'food-del', track: 'code', title: 'Food delivery app', start: '2024-12', end: '2025-03',
     summary: 'A MERN ordering platform: customer site, admin panel and an Express API with JWT login, cart, orders and Stripe checkout.',
     media: { kind: 'terminal', title: 'backend/server.js · mounted routes', lines: [
       'POST /api/user/register      registerUser',
@@ -63,7 +63,7 @@ export const clips: Clip[] = [
     caseStudy: 'mern-apps',
   },
   {
-    id: 'hackathon', track: 'code', title: 'AI task manager, IBM hackathon', start: '2025-01', end: '2025-01', approx: true,
+    id: 'hackathon', track: 'code', title: 'AI task manager, IBM hackathon', start: '2025-01', end: '2025-01',
     summary: 'Built in 24 hours with a team of four at IBM ICE Day. Task tracking, priorities and an AI chatbot. We finished in the top 10 of 30 teams.',
     media: { kind: 'card', big: 'Top 10 of 30', small: 'IBM ICE Day national hackathon, MERN stack, 24 hours' },
     caseStudy: 'mern-apps',
@@ -134,7 +134,7 @@ export const clips: Clip[] = [
 
   // Studio
   {
-    id: 'velune', ongoing: true, track: 'studio', title: 'Velune Creative Studio', start: '2026-01', end: '2026-11', approx: true,
+    id: 'velune', ongoing: true, track: 'studio', title: 'Velune Creative Studio', start: '2026-01', end: '2026-11',
     summary: 'I co-founded Velune: film, photography, content and websites for brands, makeup artists and small businesses in Bengaluru.',
     media: { kind: 'video', src: '/media/velune-reel.mp4', poster: reelPoster, alt: 'Velune showreel: bridal, fashion and brand shoots.' },
     links: [{ label: 'Website', href: 'https://www.veluneproductions.com' }, { label: 'Instagram', href: 'https://www.instagram.com/veluneproductions/' }],
@@ -169,15 +169,15 @@ export const clips: Clip[] = [
 
   // Degree
   {
-    id: 'bca', track: 'degree', title: 'BCA in AI, Cloud Computing and DevOps', start: '2023-08', end: '2026-05', approx: true,
+    id: 'bca', track: 'degree', title: 'BCA in AI, Cloud Computing and DevOps', start: '2023-08', end: '2026-05',
     summary: 'Yenepoya University, taught with the IBM Innovation Centre for Education. Machine learning, NLP, neural networks, cloud and DevOps, plus semester projects.',
     media: { kind: 'card', big: 'BCA', small: 'AI, Cloud Computing and DevOps, Yenepoya University, IBM ICE program' },
   },
 ];
 
 export const markers: Marker[] = [
-  { id: 'bronze', at: '2025-03', approx: true, title: 'Bronze medal, IBM ICE Day report-making', summary: 'Third place in the report-making competition at IBM ICE Day.' },
-  { id: 'idc', at: '2025-06', approx: true, title: 'Volunteer, Microsoft IDC Together Fest', summary: 'Helped run activities and support participants at Microsoft India Development Center’s family festival.' },
+  { id: 'bronze', at: '2025-03', title: 'Bronze medal, IBM ICE Day report-making', summary: 'Third place in the report-making competition at IBM ICE Day.' },
+  { id: 'idc', at: '2025-06', title: 'Volunteer, Microsoft IDC Together Fest', summary: 'Helped run activities and support participants at Microsoft India Development Center’s family festival.' },
   { id: 'graduated', at: '2026-05', title: 'Final exams passed', summary: 'Passed the BCA final examinations in May 2026. The degree was awarded in October 2026.' },
   { id: 'ibm-badge', at: '2026-06', title: 'IBM AI & Machine Learning Graduate', summary: 'IBM’s credential for 450 hours of classes, labs and industry projects in AI and machine learning.' },
 ];
